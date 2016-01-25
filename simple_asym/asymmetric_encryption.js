@@ -1,74 +1,41 @@
-
-/**
- * The node forge global varable
- * @type {forge}
- */
-declare var forge: any;
-
-/**
- * The fernet global varable
- * @type {fernet}
- */
-declare var fernet: any;
-
 /**
  * Class for encrypting and decrypting fernet strings
  */
-class AsymCrypt {
-
-    /**
-     * The public key
-     * @type {pki}
-     */
-    private public_key: any;
-
-    /**
-     * The private key
-     * @type {pki}
-     */
-    private private_key: any;
-
-    /**
-     * The aes key
-     * @type {string}
-     */
-    private aes_key: string;
-
+var AsymCrypt = (function () {
     /**
      * Int the class
      * @param {string} aes_key - the aes key
      * @param {string} private_key - the private key as a pem string
      * @param {string} public_key - the public key as a pem string
      */
-    constructor(aes_key?:string, private_key?:string, public_key?:string){
-        if(aes_key){
+    function AsymCrypt(aes_key, private_key, public_key) {
+        if (aes_key) {
             this.set_aes_key(aes_key);
         }
-        if(private_key){
+        if (private_key) {
             this.set_private_key(private_key);
         }
-        if(public_key){
+        if (public_key) {
             this.set_public_key(public_key);
         }
     }
-
     /**
      * Generate public and private keys
      * @param {string} passphrase - the passpharse to encrypt the private key
      * @param {number} bits - bit size of the private key defaults to 4096
      * @return {object} the public and private key as pem format in an object
      */
-    make_rsa_keys(passphrase:string, bits:number=4096): any {
-        var keypair = forge.rsa.generateKeyPair({bits: bits, e: 0x10001});
-    }
-
+    AsymCrypt.prototype.make_rsa_keys = function (passphrase, bits) {
+        if (bits === void 0) { bits = 4096; }
+        var keypair = forge.rsa.generateKeyPair({ bits: bits, e: 0x10001 });
+    };
     /**
      * Encrypt plain text
      * @param {string} text - the text to encrypt
      * @param {boolean} use_base64 - encode the encrypted text as base64
      */
-    rsa_encrypt(text:string, use_base64:boolean): string {
-        if(!this.public_key){
+    AsymCrypt.prototype.rsa_encrypt = function (text, use_base64) {
+        if (!this.public_key) {
             throw new Error("Missing Public Key");
             return;
         }
@@ -77,78 +44,75 @@ class AsymCrypt {
                 md: forge.md.sha1.create()
             }
         });
-        if(use_base64){
-            encrypted = forge.util.encode64(encrypted); 
+        if (use_base64) {
+            encrypted = forge.util.encode64(encrypted);
         }
         return encrypted;
-    }
-
+    };
     /**
      * Decrypt rsa text
      * @param {string} ciphertext - the encrypted text
      * @param {boolean} use_base64 - if the text is base64 encoded
      */
-    rsa_decrypt(ciphertext:string, use_base64?:boolean): string {
-        if(use_base64){
+    AsymCrypt.prototype.rsa_decrypt = function (ciphertext, use_base64) {
+        if (use_base64) {
             ciphertext = forge.util.decode64(ciphertext);
         }
-        if(!this.private_key){
+        if (!this.private_key) {
             throw new Error("Missing Private Key");
             return;
         }
-        return this.private_key.decrypt(ciphertext, 'RSA-OAEP',{
+        return this.private_key.decrypt(ciphertext, 'RSA-OAEP', {
             mgf1: {
                 md: forge.md.sha1.create()
             }
         });
-
-    }
-    
+    };
     /**
      * Set the aes key
      * @param {string} aes_key - the new aes key
      */
-    set_aes_key(aes_key:string): void {
+    AsymCrypt.prototype.set_aes_key = function (aes_key) {
         this.aes_key = aes_key;
-    }
-
+    };
     /**
      * Set the aes_key from an an encrypted base64 string
      * @param {string} aes_key - the encrypted aes_key
      * @param {boolean} use_base64 - if the aes key is base64 encoded
      */
-    set_aes_key_from_encrypted(aes_key:string, use_base64?:boolean): void {
-        if(use_base64){
+    AsymCrypt.prototype.set_aes_key_from_encrypted = function (aes_key, use_base64) {
+        if (use_base64) {
             aes_key = forge.util.decode64(aes_key);
         }
         this.set_aes_key(this.rsa_decrypt(aes_key));
-    }
-
+    };
     /**
      * Set the private key
      * @param {string|object} private_key - the private key
      * @param {string} passphrase - the passphrase if the private key is encrypted
      */
-    set_private_key(private_key:any, passphrase?:string): void {
-        if(passphrase){
-            this.private_key = forge.pki.decryptRsaPrivateKey(private_key,passphrase);
-        } else if(typeof private_key !== 'string'){
+    AsymCrypt.prototype.set_private_key = function (private_key, passphrase) {
+        if (passphrase) {
+            this.private_key = forge.pki.decryptRsaPrivateKey(private_key, passphrase);
+        }
+        else if (typeof private_key !== 'string') {
             this.private_key = private_key;
-        } else {
+        }
+        else {
             this.private_key = forge.pki.privateKeyFromPem(private_key);
         }
-    }
-
+    };
     /**
      * Set the public key
      * @param {string|object} public_key - the public key
      */
-    set_public_key(public_key:any): void {
-        if(typeof public_key !== 'string'){
+    AsymCrypt.prototype.set_public_key = function (public_key) {
+        if (typeof public_key !== 'string') {
             this.public_key = public_key;
-        } else {
+        }
+        else {
             this.public_key = forge.pki.publicKeyFromPem(public_key);
         }
-    }
-
-}
+    };
+    return AsymCrypt;
+})();
