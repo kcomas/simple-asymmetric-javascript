@@ -20,14 +20,35 @@ var AsymCrypt = (function () {
         }
     }
     /**
+     * Get the public key as a pem string
+     * @return {string} the public key as a pem string
+     */
+    AsymCrypt.prototype.public_key = function () {
+        return forge.pki.publicKeyToPem(this.public_key);
+    };
+    /**
      * Generate public and private keys
      * @param {string} passphrase - the passpharse to encrypt the private key
-     * @param {number} bits - bit size of the private key defaults to 4096
+     * @param {number} bits - bit size of the private key defaults to 2048
      * @return {object} the public and private key as pem format in an object
      */
     AsymCrypt.prototype.make_rsa_keys = function (passphrase, bits) {
-        if (bits === void 0) { bits = 4096; }
+        if (bits === void 0) { bits = 2048; }
         var keypair = forge.rsa.generateKeyPair({ bits: bits, e: 0x10001 });
+        this._private_key = keypair.privateKey;
+        this._public_key = keypair.publicKey;
+        var obj = {
+            public_key: null,
+            private_key: null
+        };
+        obj.public_key = forge.pki.publicKeyToPem(this.public_key);
+        if (passphrase) {
+            obj.private_key = forge.pki.encryptRsaPrivateKey(this._private_key, passphrase);
+        }
+        else {
+            obj.private_key = forge.pki.privateKeyToPem(this._private_key);
+        }
+        return obj;
     };
     /**
      * Encrypt plain text
@@ -35,11 +56,11 @@ var AsymCrypt = (function () {
      * @param {boolean} use_base64 - encode the encrypted text as base64
      */
     AsymCrypt.prototype.rsa_encrypt = function (text, use_base64) {
-        if (!this.public_key) {
+        if (!this._public_key) {
             throw new Error("Missing Public Key");
             return;
         }
-        var encrypted = this.public_key.encrypt(text, 'RSA-OAEP', {
+        var encrypted = this._public_key.encrypt(text, 'RSA-OAEP', {
             mgf1: {
                 md: forge.md.sha1.create()
             }
@@ -58,11 +79,11 @@ var AsymCrypt = (function () {
         if (use_base64) {
             ciphertext = forge.util.decode64(ciphertext);
         }
-        if (!this.private_key) {
+        if (!this._private_key) {
             throw new Error("Missing Private Key");
             return;
         }
-        return this.private_key.decrypt(ciphertext, 'RSA-OAEP', {
+        return this._private_key.decrypt(ciphertext, 'RSA-OAEP', {
             mgf1: {
                 md: forge.md.sha1.create()
             }
@@ -73,7 +94,7 @@ var AsymCrypt = (function () {
      * @param {string} aes_key - the new aes key
      */
     AsymCrypt.prototype.set_aes_key = function (aes_key) {
-        this.aes_key = aes_key;
+        this._aes_key = aes_key;
     };
     /**
      * Set the aes_key from an an encrypted base64 string
@@ -87,19 +108,28 @@ var AsymCrypt = (function () {
         this.set_aes_key(this.rsa_decrypt(aes_key));
     };
     /**
+     * Get encrypted aes key from a public key
+     * @param {string} public_key - the public key as a pem string
+     * @param {boolean} use_base64 - encode the aes key as base64
+     * @return {string} the encrypted aes key
+     */
+    AsymCrypt.prototype.get_encrypted_aes_key = function (public_key, use_base64) {
+        var public_asym = new AsymCrypt(null, null, public_key);
+    };
+    /**
      * Set the private key
      * @param {string|object} private_key - the private key
      * @param {string} passphrase - the passphrase if the private key is encrypted
      */
     AsymCrypt.prototype.set_private_key = function (private_key, passphrase) {
         if (passphrase) {
-            this.private_key = forge.pki.decryptRsaPrivateKey(private_key, passphrase);
+            this._private_key = forge.pki.decryptRsaPrivateKey(private_key, passphrase);
         }
         else if (typeof private_key !== 'string') {
-            this.private_key = private_key;
+            this._private_key = private_key;
         }
         else {
-            this.private_key = forge.pki.privateKeyFromPem(private_key);
+            this._private_key = forge.pki.privateKeyFromPem(private_key);
         }
     };
     /**
@@ -108,10 +138,10 @@ var AsymCrypt = (function () {
      */
     AsymCrypt.prototype.set_public_key = function (public_key) {
         if (typeof public_key !== 'string') {
-            this.public_key = public_key;
+            this._public_key = public_key;
         }
         else {
-            this.public_key = forge.pki.publicKeyFromPem(public_key);
+            this._public_key = forge.pki.publicKeyFromPem(public_key);
         }
     };
     return AsymCrypt;
