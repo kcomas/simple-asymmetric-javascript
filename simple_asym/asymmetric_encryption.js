@@ -37,6 +37,19 @@ var AsymCrypt = (function () {
         return forge.util.encode64(bytes);
     };
     /**
+     * Generate a random passpharse
+     * @param {number} N - the size of the passphrase defaults to 255
+     */
+    AsymCrypt.prototype._generate_passphrase = function (N) {
+        if (N === void 0) { N = 255; }
+        var text = "";
+        var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        for (var i = 0; i < N; i++) {
+            text += possible.charAt(Math.floor(Math.random() * possible.length));
+        }
+        return text;
+    };
+    /**
      * Generate public and private keys
      * @param {string} passphrase - the passpharse to encrypt the private key
      * @param {number} bits - bit size of the private key defaults to 2048
@@ -47,10 +60,7 @@ var AsymCrypt = (function () {
         var keypair = forge.rsa.generateKeyPair({ bits: bits, e: 0x10001 });
         this._private_key = keypair.privateKey;
         this._public_key = keypair.publicKey;
-        var obj = {
-            public_key: null,
-            private_key: null
-        };
+        var obj = {};
         obj.public_key = forge.pki.publicKeyToPem(this._public_key);
         if (passphrase) {
             obj.private_key = forge.pki.encryptRsaPrivateKey(this._private_key, passphrase);
@@ -58,6 +68,18 @@ var AsymCrypt = (function () {
         else {
             obj.private_key = forge.pki.privateKeyToPem(this._private_key);
         }
+        return obj;
+    };
+    /**
+     * Wrapper for making the public and private keys with an auto generated passphrase
+     * @param {number} bits - the number of bits to use
+     * @return {object} object with the public private and passphrase
+     */
+    AsymCrypt.prototype.make_rsa_keys_with_passphrase = function (bits) {
+        if (bits === void 0) { bits = 2048; }
+        var passphrase = this._generate_passphrase();
+        var obj = this.make_rsa_keys(passphrase, bits);
+        obj.passphrase = passphrase;
         return obj;
     };
     /**

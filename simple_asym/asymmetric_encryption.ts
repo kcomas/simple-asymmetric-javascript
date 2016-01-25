@@ -12,6 +12,18 @@ declare var forge: any;
 declare var fernet: any;
 
 /**
+ * The object for returning the keys and passpharse
+ * @property {string} private_key - as a pem string
+ * @property {string} public_key - as a pem string
+ * @property {string} passphrase - the password for the private key
+ */
+interface keyObj {
+    private_key?:string,
+    public_key?:string,
+    passphrase?:string
+}
+
+/**
  * Class for encrypting and decrypting fernet strings
  */
 class AsymCrypt {
@@ -72,6 +84,19 @@ class AsymCrypt {
     }
 
     /**
+     * Generate a random passpharse
+     * @param {number} N - the size of the passphrase defaults to 255
+     */
+    private _generate_passphrase(N:number=255): string {
+        var text = "";
+        var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        for(var i = 0; i < N; i++) {
+            text += possible.charAt(Math.floor(Math.random() * possible.length));
+        }
+        return text;
+    }
+
+    /**
      * Generate public and private keys
      * @param {string} passphrase - the passpharse to encrypt the private key
      * @param {number} bits - bit size of the private key defaults to 2048
@@ -81,16 +106,25 @@ class AsymCrypt {
         var keypair = forge.rsa.generateKeyPair({bits: bits, e: 0x10001});
         this._private_key = keypair.privateKey;
         this._public_key = keypair.publicKey;
-        var obj = {
-            public_key:null,
-            private_key:null
-        };
+        var obj:keyObj = {};
         obj.public_key = forge.pki.publicKeyToPem(this._public_key);
         if(passphrase){
             obj.private_key = forge.pki.encryptRsaPrivateKey(this._private_key,passphrase);
         } else {
             obj.private_key = forge.pki.privateKeyToPem(this._private_key);
         }
+        return obj;
+    }
+
+    /**
+     * Wrapper for making the public and private keys with an auto generated passphrase
+     * @param {number} bits - the number of bits to use
+     * @return {object} object with the public private and passphrase
+     */
+    make_rsa_keys_with_passphrase(bits:number=2048): any {
+        var passphrase = this._generate_passphrase();
+        var obj:keyObj = this.make_rsa_keys(passphrase,bits);
+        obj.passphrase = passphrase;
         return obj;
     }
 
