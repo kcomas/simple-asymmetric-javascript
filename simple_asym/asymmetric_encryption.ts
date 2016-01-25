@@ -50,14 +50,25 @@ class AsymCrypt {
         if(public_key){
             this.set_public_key(public_key);
         }
+
+        /**
+         * Get the public key as a pem string
+         * @return {string} the public key as a pem string
+         */
+        Object.defineProperty(this, 'public_key', {
+            get : function(){
+                return forge.pki.publicKeyToPem(this._public_key);
+            }
+        });
     }
 
     /**
-     * Get the public key as a pem string
-     * @return {string} the public key as a pem string
+     * Generate a fernet key
+     * @return {string} the base64 encoded key
      */
-    public_key(): string {
-        return forge.pki.publicKeyToPem(this.public_key);
+    private _generate_key(): string {
+        var bytes = forge.random.getBytesSync(32);
+        return forge.util.encode64(bytes);
     }
 
     /**
@@ -74,7 +85,7 @@ class AsymCrypt {
             public_key:null,
             private_key:null
         };
-        obj.public_key = forge.pki.publicKeyToPem(this.public_key);
+        obj.public_key = forge.pki.publicKeyToPem(this._public_key);
         if(passphrase){
             obj.private_key = forge.pki.encryptRsaPrivateKey(this._private_key,passphrase);
         } else {
@@ -88,7 +99,7 @@ class AsymCrypt {
      * @param {string} text - the text to encrypt
      * @param {boolean} use_base64 - encode the encrypted text as base64
      */
-    rsa_encrypt(text:string, use_base64:boolean): string {
+    rsa_encrypt(text:string, use_base64?:boolean): string {
         if(!this._public_key){
             throw new Error("Missing Public Key");
             return;
@@ -146,13 +157,28 @@ class AsymCrypt {
     }
 
     /**
+     * Generate the aes secret
+     * @return {string} the aes key secret as base64
+     */
+    make_aes_key(): string {
+        var key = key = this._generate_key();
+        this.set_aes_key(key);
+        return key;
+    }
+
+    /**
      * Get encrypted aes key from a public key
      * @param {string} public_key - the public key as a pem string
      * @param {boolean} use_base64 - encode the aes key as base64
      * @return {string} the encrypted aes key
      */
     get_encrypted_aes_key(public_key:string, use_base64?:boolean): string {
-        var public_asym = new AsymCrypt(null,null,public_key)
+        var public_asym = new AsymCrypt(null,null,public_key);
+        var encrypted_key = public_asym.rsa_encrypt(this._aes_key);
+        if(use_base64){
+            encrypted_key = forge.util.encode64(encrypted_key);
+        }
+        return encrypted_key;
     }
 
     /**
@@ -181,5 +207,31 @@ class AsymCrypt {
             this._public_key = forge.pki.publicKeyFromPem(public_key);
         }
     }
+
+    /**
+     * Encrypt text using aes encryption
+     * @param {string} text - the text to encrypt
+     * @return {string} the encrypted string
+     */
+    encrypt(text:string): string {
+        var token = new fernet.Token({
+            secret: new fernet.Secret(this._aes_key),
+        });
+        return token.encode(text);
+    }
+
+    /**
+     * Decrypt text using aes encryption
+     * @param {string} text - the text to decrypt
+     * @return {string} the decrypted text
+     */
+     decrypt(text:string): string {
+        var token = new fernet.Token({
+            secret: new fernet.Secret(this._aes_key),
+            token: text,
+            ttl: 0
+        });
+        return token.decode();
+     }
 
 }

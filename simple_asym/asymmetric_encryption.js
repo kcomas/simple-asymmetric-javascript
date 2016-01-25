@@ -18,13 +18,23 @@ var AsymCrypt = (function () {
         if (public_key) {
             this.set_public_key(public_key);
         }
+        /**
+         * Get the public key as a pem string
+         * @return {string} the public key as a pem string
+         */
+        Object.defineProperty(this, 'public_key', {
+            get: function () {
+                return forge.pki.publicKeyToPem(this._public_key);
+            }
+        });
     }
     /**
-     * Get the public key as a pem string
-     * @return {string} the public key as a pem string
+     * Generate a fernet key
+     * @return {string} the base64 encoded key
      */
-    AsymCrypt.prototype.public_key = function () {
-        return forge.pki.publicKeyToPem(this.public_key);
+    AsymCrypt.prototype._generate_key = function () {
+        var bytes = forge.random.getBytesSync(32);
+        return forge.util.encode64(bytes);
     };
     /**
      * Generate public and private keys
@@ -41,7 +51,7 @@ var AsymCrypt = (function () {
             public_key: null,
             private_key: null
         };
-        obj.public_key = forge.pki.publicKeyToPem(this.public_key);
+        obj.public_key = forge.pki.publicKeyToPem(this._public_key);
         if (passphrase) {
             obj.private_key = forge.pki.encryptRsaPrivateKey(this._private_key, passphrase);
         }
@@ -108,6 +118,15 @@ var AsymCrypt = (function () {
         this.set_aes_key(this.rsa_decrypt(aes_key));
     };
     /**
+     * Generate the aes secret
+     * @return {string} the aes key secret as base64
+     */
+    AsymCrypt.prototype.make_aes_key = function () {
+        var key = key = this._generate_key();
+        this.set_aes_key(key);
+        return key;
+    };
+    /**
      * Get encrypted aes key from a public key
      * @param {string} public_key - the public key as a pem string
      * @param {boolean} use_base64 - encode the aes key as base64
@@ -115,6 +134,11 @@ var AsymCrypt = (function () {
      */
     AsymCrypt.prototype.get_encrypted_aes_key = function (public_key, use_base64) {
         var public_asym = new AsymCrypt(null, null, public_key);
+        var encrypted_key = public_asym.rsa_encrypt(this._aes_key);
+        if (use_base64) {
+            encrypted_key = forge.util.encode64(encrypted_key);
+        }
+        return encrypted_key;
     };
     /**
      * Set the private key
@@ -143,6 +167,30 @@ var AsymCrypt = (function () {
         else {
             this._public_key = forge.pki.publicKeyFromPem(public_key);
         }
+    };
+    /**
+     * Encrypt text using aes encryption
+     * @param {string} text - the text to encrypt
+     * @return {string} the encrypted string
+     */
+    AsymCrypt.prototype.encrypt = function (text) {
+        var token = new fernet.Token({
+            secret: new fernet.Secret(this._aes_key)
+        });
+        return token.encode(text);
+    };
+    /**
+     * Decrypt text using aes encryption
+     * @param {string} text - the text to decrypt
+     * @return {string} the decrypted text
+     */
+    AsymCrypt.prototype.decrypt = function (text) {
+        var token = new fernet.Token({
+            secret: new fernet.Secret(this._aes_key),
+            token: text,
+            ttl: 0
+        });
+        return token.decode();
     };
     return AsymCrypt;
 })();
