@@ -110,9 +110,9 @@ class AsymCrypt {
             this.set_private_key(data.private_key,passphrase);
             this.set_public_key(data.public_key);
             if(!callback){
-                return passphrase(event.data);
+                return passphrase(data);
             } else {
-                return callback(event.data);
+                return callback(data);
             }
         };
     }
