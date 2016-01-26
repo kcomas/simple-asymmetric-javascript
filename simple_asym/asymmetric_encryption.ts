@@ -102,13 +102,18 @@ class AsymCrypt {
      * @param {number} bits - bit size of the private key defaults to 2048
      * @param {function} callback(keys:object)} - when the keys return the key object in it
      */
-    make_rsa_keys(passphrase:string, bits:number=2048,callback:Function): any {
+    make_rsa_keys(passphrase:any, bits:number=2048,callback:Function): any {
         var worker = new Worker('../simple_asym/keyWorker.js');        
         worker.postMessage(JSON.stringify({passphrase:passphrase,bits:bits}));
         worker.onmessage = (event)=>{
-            this._private_key = event.data.private_key;
-            this._public_key = event.data.public_key;
-            return callback(event.data);
+            var data = JSON.parse(event.data);
+            this.set_private_key(data.private_key,passphrase);
+            this.set_public_key(data.public_key);
+            if(!callback){
+                return passphrase(event.data);
+            } else {
+                return callback(event.data);
+            }
         };
     }
 

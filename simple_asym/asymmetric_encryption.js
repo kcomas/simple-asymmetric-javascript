@@ -61,9 +61,15 @@ var AsymCrypt = (function () {
         var worker = new Worker('../simple_asym/keyWorker.js');
         worker.postMessage(JSON.stringify({ passphrase: passphrase, bits: bits }));
         worker.onmessage = function (event) {
-            _this._private_key = event.data.private_key;
-            _this._public_key = event.data.public_key;
-            return callback(event.data);
+            var data = JSON.parse(event.data);
+            _this.set_private_key(data.private_key, passphrase);
+            _this.set_public_key(data.public_key);
+            if (!callback) {
+                return passphrase(event.data);
+            }
+            else {
+                return callback(event.data);
+            }
         };
     };
     /**
