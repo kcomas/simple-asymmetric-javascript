@@ -97,35 +97,32 @@ class AsymCrypt {
     }
 
     /**
-     * Generate public and private keys
+     * Generate public and private keys in a web worker
      * @param {string} passphrase - the passpharse to encrypt the private key
      * @param {number} bits - bit size of the private key defaults to 2048
-     * @return {object} the public and private key as pem format in an object
+     * @param {function} callback(keys:object)} - when the keys return the key object in it
      */
-    make_rsa_keys(passphrase:string, bits:number=2048): any {
-        var keypair = forge.rsa.generateKeyPair({bits: bits, e: 0x10001});
-        this._private_key = keypair.privateKey;
-        this._public_key = keypair.publicKey;
-        var obj:keyObj = {};
-        obj.public_key = forge.pki.publicKeyToPem(this._public_key);
-        if(passphrase){
-            obj.private_key = forge.pki.encryptRsaPrivateKey(this._private_key,passphrase);
-        } else {
-            obj.private_key = forge.pki.privateKeyToPem(this._private_key);
-        }
-        return obj;
+    make_rsa_keys(passphrase:string, bits:number=2048,callback:Function): any {
+        var worker = new Worker('../simple_asym/keyWorker.js');        
+        worker.postMessage(JSON.stringify({passphrase:passphrase,bits:bits}));
+        worker.onmessage = (event)=>{
+            this._private_key = event.data.private_key;
+            this._public_key = event.data.public_key;
+            return callback(event.data);
+        };
     }
 
     /**
      * Wrapper for making the public and private keys with an auto generated passphrase
      * @param {number} bits - the number of bits to use
-     * @return {object} object with the public private and passphrase
+     * @param {function(keys:object)} callback - callback with the key data
      */
-    make_rsa_keys_with_passphrase(bits:number=2048): any {
+    make_rsa_keys_with_passphrase(bits:number=2048,callback:Function): any {
         var passphrase = this._generate_passphrase();
-        var obj:keyObj = this.make_rsa_keys(passphrase,bits);
-        obj.passphrase = passphrase;
-        return obj;
+        var obj:keyObj = this.make_rsa_keys(passphrase,bits,(keys)=>{
+            obj.passphrase = passphrase;
+            return callback(obj);
+        });
     }
 
     /**
