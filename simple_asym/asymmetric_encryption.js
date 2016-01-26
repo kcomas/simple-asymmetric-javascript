@@ -65,10 +65,10 @@ var AsymCrypt = (function () {
             _this.set_private_key(data.private_key, passphrase);
             _this.set_public_key(data.public_key);
             if (!callback) {
-                return passphrase(event.data);
+                return passphrase(data);
             }
             else {
-                return callback(event.data);
+                return callback(data);
             }
         };
     };
@@ -171,7 +171,7 @@ var AsymCrypt = (function () {
      * @param {string} passphrase - the passphrase if the private key is encrypted
      */
     AsymCrypt.prototype.set_private_key = function (private_key, passphrase) {
-        if (passphrase) {
+        if (passphrase && typeof passphrase === 'string') {
             this._private_key = forge.pki.decryptRsaPrivateKey(private_key, passphrase);
         }
         else if (typeof private_key !== 'string') {

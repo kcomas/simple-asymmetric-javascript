@@ -223,7 +223,7 @@ class AsymCrypt {
      * @param {string} passphrase - the passphrase if the private key is encrypted
      */
     set_private_key(private_key:any, passphrase?:string): void {
-        if(passphrase){
+        if(passphrase && typeof passphrase === 'string'){
             this._private_key = forge.pki.decryptRsaPrivateKey(private_key,passphrase);
         } else if(typeof private_key !== 'string'){
             this._private_key = private_key;
