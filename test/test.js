@@ -16,5 +16,5 @@ describe("Bob and Alice example",function(){
                 done();
             });
         });
-    });
+    },20000);
 });
